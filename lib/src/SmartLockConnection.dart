@@ -242,7 +242,7 @@ class SmartLockConnection {
         });
         
         // create request payload
-        List<int> payload = await _createLockStateRequest(lock.authorization.authId, lock.authorization.ssk);
+        List<int> payload = _createLockStateRequest(lock.authorization.authId, lock.authorization.ssk);
         //write payload
         device.writeCharacteristic(xter, payload,type: CharacteristicWriteType.withResponse);
       }
@@ -298,7 +298,7 @@ class SmartLockConnection {
                 switch(command) {
                   case CHALLENGE_CMD: 
                     //create lock action request with the received challenge
-                    List<int> payload = await _createLockActionRequest(lock.authorization.authId,
+                    List<int> payload = _createLockActionRequest(lock.authorization.authId,
                     lock.authorization.ssk,action,msg.sublist(6,msg.length-2));
                     //write payload
                     device.writeCharacteristic(xter, payload,type: CharacteristicWriteType.withResponse);
@@ -337,7 +337,7 @@ class SmartLockConnection {
         });
       
         // create challenge request payload
-        List<int> payload = await _createChallengeRequest(lock.authorization.authId, lock.authorization.ssk);
+        List<int> payload = _createChallengeRequest(lock.authorization.authId, lock.authorization.ssk);
         //write payload
         device.writeCharacteristic(xter, payload,type: CharacteristicWriteType.withResponse);
 
@@ -393,7 +393,7 @@ class SmartLockConnection {
                 switch(command) {
                   case CHALLENGE_CMD: 
                     // create authorization request with the received challenge
-                    List<int> payload = await _createAuthorizationRequest(lock.authorization.authId, 
+                    List<int> payload = _createAuthorizationRequest(lock.authorization.authId, 
                     lock.authorization.ssk, pin, idType, authName, authSsk, startDate, endDate, 
                     startTime, endTime, xter, msg.sublist(6,msg.length-2));
                     //write payload
@@ -432,7 +432,7 @@ class SmartLockConnection {
         });
       
         // create request payload
-        List<int> payload = await _createChallengeRequest(lock.authorization.authId, lock.authorization.ssk);
+        List<int> payload = _createChallengeRequest(lock.authorization.authId, lock.authorization.ssk);
         //write payload
         device.writeCharacteristic(xter, payload,type: CharacteristicWriteType.withResponse);
       }
@@ -629,7 +629,7 @@ class SmartLockConnection {
                 switch(command) {
                   case CHALLENGE_CMD: 
                     // request config with the received challenge
-                    List<int> payload = await _createConfigRequest(lock.authorization.authId,lock.authorization.ssk, 
+                    List<int> payload = _createConfigRequest(lock.authorization.authId,lock.authorization.ssk, 
                       msg.sublist(6,msg.length-2));
                     //write payload
                     device.writeCharacteristic(xter, payload,type: CharacteristicWriteType.withResponse);
@@ -666,7 +666,7 @@ class SmartLockConnection {
         });
       
         // create request payload
-        List<int> payload = await _createChallengeRequest(lock.authorization.authId, lock.authorization.ssk);
+        List<int> payload = _createChallengeRequest(lock.authorization.authId, lock.authorization.ssk);
         //write payload
         device.writeCharacteristic(xter, payload,type: CharacteristicWriteType.withResponse);
       }
@@ -718,7 +718,7 @@ class SmartLockConnection {
                 switch(command) {
                   case CHALLENGE_CMD: 
                     // request config with the received challenge
-                    List<int> payload = await _createSetPinRequest(lock.authorization.authId,lock.authorization.ssk, 
+                    List<int> payload = _createSetPinRequest(lock.authorization.authId,lock.authorization.ssk, 
                     oldPin, newPin, msg.sublist(6,msg.length-2));
                     //write payload
                     device.writeCharacteristic(xter, payload,type: CharacteristicWriteType.withResponse);
@@ -759,7 +759,7 @@ class SmartLockConnection {
         });
       
         // create request payload
-        List<int> payload = await _createChallengeRequest(lock.authorization.authId, lock.authorization.ssk);
+        List<int> payload = _createChallengeRequest(lock.authorization.authId, lock.authorization.ssk);
         //write payload
         device.writeCharacteristic(xter, payload,type: CharacteristicWriteType.withResponse);
       }
