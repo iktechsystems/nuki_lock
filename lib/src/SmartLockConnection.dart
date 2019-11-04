@@ -855,7 +855,7 @@ class SmartLockConnection {
     return payload;
   }
   
-  Future<List<int>> _createLockStateRequest(String authId, String ssk) async {
+  List<int> _createLockStateRequest(String authId, String ssk)  {
     List<int> msg = [];
     msg.addAll(hex.decode(authId)); // add authorisation id
     msg.addAll([REQUEST_DATA_CMD,0]); // add request data command
@@ -876,7 +876,7 @@ class SmartLockConnection {
     return payload;
   }
 
-  Future<List<int>> _createChallengeRequest(String authId, String ssk) async {
+  List<int> _createChallengeRequest(String authId, String ssk)  {
     List<int> msg = [];
     msg.addAll(hex.decode(authId)); // add authorisation id
     msg.addAll([REQUEST_DATA_CMD,0]); // add request data command
@@ -897,8 +897,8 @@ class SmartLockConnection {
     return payload;
   }
   
-  Future<List<int>> _createLockActionRequest(String authId, String ssk, 
-  LockAction action, List<int> challenge) async {
+  List<int> _createLockActionRequest(String authId, String ssk, 
+  LockAction action, List<int> challenge)  {
     List<int> msg = [];
     msg.addAll(hex.decode(authId)); // add authorisation id
     msg.addAll([LOCK_ACTION_CMD,0]); // add Lock Action command
@@ -921,9 +921,9 @@ class SmartLockConnection {
     return payload;
   }
 
-  Future<List<int>> _createAuthorizationRequest(String authId, String ssk, int pin, IdType idType, 
+  List<int> _createAuthorizationRequest(String authId, String ssk, int pin, IdType idType, 
   String authName, List<int> authSsk, DateTime startDate, DateTime endDate, DateTime startTime, 
-  DateTime endTime, BluetoothCharacteristic xter, List<int> challenge) async{
+  DateTime endTime, BluetoothCharacteristic xter, List<int> challenge) {
       //generate authorization data
    
     List<int> msg = [];
@@ -963,7 +963,7 @@ class SmartLockConnection {
     return payload;
   }
   
-  Future<List<int>> _createConfigRequest(String authId, String ssk, List<int> challenge) async {
+  List<int> _createConfigRequest(String authId, String ssk, List<int> challenge)  {
     List<int> msg = [];
     msg.addAll(hex.decode(authId)); // add authorisation id
     msg.addAll([GET_CONFIG_CMD,0]); // add get config command
@@ -984,7 +984,7 @@ class SmartLockConnection {
     return payload;
   }
 
-  Future<List<int>> _createSetPinRequest(String authId, String ssk, int oldPin, int newPin, List<int> challenge) async {
+  List<int> _createSetPinRequest(String authId, String ssk, int oldPin, int newPin, List<int> challenge)  {
     List<int> msg = [];
     msg.addAll(hex.decode(authId)); // add authorisation id
     msg.addAll([SET_PIN_CMD,0]); // add command

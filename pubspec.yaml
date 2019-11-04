@@ -2,7 +2,7 @@ name: nuki_lock
 description: A new Flutter package project.
 version: 0.0.1
 author: Ikechukwu Ukaegbu <iktechsystems@gmail.com>
-homepage:
+homepage: https://github.com/iktechsystems/nuki_lock
 
 environment:
   sdk: ">=2.1.0 <3.0.0"
@@ -10,7 +10,11 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  flutter_blue: ^0.5.0
+  flutter_blue:
+    git:
+      url: git://github.com/bpillon/flutter_blue.git
+  #flutter_blue:
+  #  path: ../flutter_blue-0.5.0/
   tweetnacl: ^0.3.1
   crypto: ^2.0.6
   crclib: ^1.0.1
