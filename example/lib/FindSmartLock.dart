@@ -4,7 +4,6 @@
 
 import 'dart:async';
 import 'dart:collection';
-import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/widgets.dart';
@@ -13,7 +12,7 @@ import 'package:flutter_blue/flutter_blue.dart';
 import 'package:nuki_lock/nuki_lock.dart';
 
 import 'AppDialogs.dart';
-import 'LinkToServer.dart';
+import 'LockDetails.dart';
 
 // Name for the master authorisation
 const String AUTHORIZATION_NAME = 'Master Key';
@@ -103,7 +102,7 @@ class FindSmartLockState extends State<FindSmartLock> {
           Navigator.pushReplacement(
             context, 
             MaterialPageRoute(
-              builder: (context)=>LinkToServer(lock,config,sls)
+              builder: (context)=>LockDetail(lock,config,sls)
             )
           );
         }, onError: (error) async{
