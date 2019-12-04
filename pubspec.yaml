@@ -1,5 +1,5 @@
 name: nuki_lock
-description: A new Flutter package project.
+description: A flutter API for Nuki smart door lock.
 version: 0.0.1
 author: Ikechukwu Ukaegbu <iktechsystems@gmail.com>
 homepage: https://github.com/iktechsystems/nuki_lock
