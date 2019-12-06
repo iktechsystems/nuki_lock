@@ -7,8 +7,8 @@ import 'AppDialogs.dart';
 
 
 class LockDetail extends StatefulWidget {
-  final SmartLock lock;
-  final LockConfig config;
+  final SmartLockKey lock;
+  final Config config;
   final SmartLockState lockState;
 
   LockDetail(this.lock, this.config, this.lockState, {Key key}) : super(key: key);
@@ -20,8 +20,8 @@ class LockDetail extends StatefulWidget {
 
 class LockDetailState extends State<LockDetail> {
 
-  final SmartLock lock;
-  final LockConfig config;
+  final SmartLockKey lock;
+  final Config config;
   SmartLockState lockState;
 
 

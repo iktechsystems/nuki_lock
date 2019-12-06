@@ -85,16 +85,16 @@ class FindSmartLockState extends State<FindSmartLock> {
       return;
     }
 
-    SmartLock lock;
-    LockConfig config;
-    connection.createSmartLock(device,IdType.APP,APP_ID,AUTHORIZATION_NAME).listen((SmartLock sl){
+    SmartLockKey lock;
+    Config config;
+    connection.authorizeApp(device,IdType.APP,APP_ID,AUTHORIZATION_NAME).listen((SmartLockKey sl){
       progMsg.add('Successfully connected to ${device.name}');
       lock = sl;
     },onDone: (){
       if(lock == null) 
         return;
       progMsg.add('Retrieving information from ${device.name}');
-      connection.getLockConfig(lock).listen((LockConfig lc){
+      connection.getLockConfig(lock).listen((Config lc){
         config = lc;
       }, onDone: (){
         connection.getLockState(lock).listen((SmartLockState sls){
@@ -186,6 +186,7 @@ class FindSmartLockState extends State<FindSmartLock> {
                   Text(devices.elementAt(index).name),
                 ],
               ),
+              subtitle: Text('Put lock in pairing mode and tap to authorize'),
               onTap: (){
                 connectToLock(context, devices.elementAt(index));
               },
@@ -217,8 +218,7 @@ class FindSmartLockState extends State<FindSmartLock> {
       floatingActionButton: FloatingActionButton(
         child: Icon(Icons.search),
         onPressed: (){
-          //findDevices(context);
-          test();
+          findDevices(context);
         },
       ),
     );

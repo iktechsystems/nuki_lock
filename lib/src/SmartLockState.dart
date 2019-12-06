@@ -5,6 +5,7 @@ enum LockState {UNCALIBRATED, LOCKED, UNLOCKING, UNLOCKED, LOCKING, UNLATCHED, U
 enum Triger {SYSTEM, MANUAL, BUTTON, AUTOMATIC, AUTO_LOCK, UNDEFINED}
 enum BatteryState {OK, CRITICAL, UNDEFINED}
 
+//TODO: Complete the list of smart lock state properties
 class SmartLockState {
   final NukiState nukiState;
   final LockState lockState;
@@ -16,9 +17,14 @@ class SmartLockState {
 
   SmartLockState({this.batteryState,this.currentTime, this.lockState, this.nukiState, this.timeZoneOffset, this.triger});
 
-  factory SmartLockState.fromDeviceResponse(List<int> response) {
-    //decrypted msg: de5c3400 0c00 02 03 00 e307 07 19 0e 28 1b 0000 00 02 00 00 00 00 01 7fcf                    
-    // the year is reflected. it is 07e3 instead of e307
+  ///Deserialize smart lock state from byte stream 
+  ///
+  ///Convinience method to deserialize [SmartLockState] properties from the decrypted 
+  ///[response] returned by the get lock state request
+  factory SmartLockState.fromBytes(List<int> response) {
+    //sample response: de5c3400 0c00 02 03 00 e307 07 19 0e 28 1b 0000 00 02 00 00 00 00 01 7fcf                    
+    
+    // the year is reflected, e.g., it is 07e3 instead of e307
     String hexYr = hex.encode([response[10],response[9]]);
     int yr = int.parse(hexYr, radix:16);
     

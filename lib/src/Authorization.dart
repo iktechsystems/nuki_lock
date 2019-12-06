@@ -1,10 +1,13 @@
 
 enum IdType {APP, BRIDGE, FOB, KEYPAD}
 
+//TODO: Complete the list of Authorization properties
 class Authorization {
-  final String authId; // authorisation Id
-  final String ssk; // Shared secret key
-  final String authName;
+  /// [id] is stored as hex string for convenience
+  final String id; 
+  // Shared secret key
+  final String ssk; 
+  final String name;
   final IdType idType;
   final DateTime allowedFromDate;
   final DateTime allowedUntilDate;
@@ -12,6 +15,6 @@ class Authorization {
   final DateTime allowedUntilTime;
   
 
-  Authorization(this.authId, this.ssk,{this.idType,this.authName, this.allowedFromDate,
+  Authorization(this.id, this.ssk,{this.idType,this.name, this.allowedFromDate,
     this.allowedUntilDate,this.allowedFromTime,this.allowedUntilTime});
 }

@@ -15,10 +15,10 @@ import 'package:crypto/crypto.dart';
 
 import 'Authorization.dart';
 import 'LockAction.dart';
-import 'LockConfig.dart';
+import 'Config.dart';
 import 'RequestError.dart';
 import 'SmartLockState.dart';
-import 'SmartLock.dart';
+import 'SmartLockKey.dart';
 
 
 // Advertisement service UUID
@@ -157,8 +157,6 @@ class SmartLockConnection {
     /// Start scanning
     scanSubscription = _flutterBlue.scan(
       scanMode: ScanMode.lowLatency,
-      //withServices: [Guid(KEYTURNER_SERVICE_UUID)], 54:D2:72:2A:BD:ED Nuki_192ABDED 
-      //withDevices: [Guid(KEYTURNER_SERVICE_UUID)],
       timeout: duration
 
     ).listen((scanResult) {
@@ -185,8 +183,9 @@ class SmartLockConnection {
 
   /// Get the current state of [lock]
   /// 
-  /// Returns a [Stream] which sends [SmartLockState] of [lock] to listeners
-  Stream<SmartLockState> getLockState(SmartLock lock, {Duration timeout=DEFAULT_CONNECTION_TIMEOUT}) {
+  /// Returns a [Stream] which sends [SmartLockState] of [lock] to listeners. The [Stream] closes
+  /// if the request is not completed after [timeout].  
+  Stream<SmartLockState> getLockState(SmartLockKey lock, {Duration timeout=DEFAULT_CONNECTION_TIMEOUT}) {
 
     List<int> buffer = [];
     StreamController<SmartLockState> streamController = new StreamController();
@@ -210,22 +209,18 @@ class SmartLockConnection {
         await device.setNotifyValue(xter, true);
         indListener = device.onValueChanged(xter).listen((values) async {
           buffer.addAll(values);
-          //print('event msg: ${hex.encode(values)}');
 
           if(values.length < MAX_PACKET_LENGTH) {
-            // print response to console for debugging
-            debugPrint('Encrypted response: ${hex.encode(buffer.toList())}');
+            
             List<int> msg = _decrypt(buffer, hex.decode(lock.authorization.ssk));
-            // print response to console for debugging
-            debugPrint('Decrypted response: ${hex.encode(msg.toList())}');
-
+            
             if(_isCrcOk(msg)) {
-              if(lock.authorization.authId == hex.encode(msg.sublist(0,4))) {
+              if(lock.authorization.id == hex.encode(msg.sublist(0,4))) {
                 int command = msg[4]; // get command in the response 
                 
                 switch(command) {
                   case KEYTURNER_STATE_CMD: 
-                    streamController.add(SmartLockState.fromDeviceResponse(msg));
+                    streamController.add(SmartLockState.fromBytes(msg));
                     break;
                   case ERROR_REPORT_CMD: 
                     streamController.addError(_requestErrors[msg[6]]);
@@ -244,7 +239,7 @@ class SmartLockConnection {
         });
         
         // create request payload
-        List<int> payload = _createLockStateRequest(lock.authorization.authId, lock.authorization.ssk);
+        List<int> payload = _createLockStateRequest(lock.authorization.id, lock.authorization.ssk);
         //write payload
         device.writeCharacteristic(xter, payload,type: CharacteristicWriteType.withResponse);
       } else if (s == BluetoothDeviceState.disconnected){
@@ -259,8 +254,9 @@ class SmartLockConnection {
 
   /// Performs the requested [action] on [lock] 
   /// 
-  /// Returns a [Stream] which sends [SmartLockState] of [lock] to listeners
-  Stream<SmartLockState> requestLockAction(SmartLock lock, LockAction action, {Duration timeout=DEFAULT_CONNECTION_TIMEOUT}) {
+  /// Returns a [Stream] which sends [SmartLockState] of [lock] to listeners. The [Stream] closes
+  /// if the request is not completed after [timeout].
+  Stream<SmartLockState> requestLockAction(SmartLockKey lock, LockAction action, {Duration timeout=DEFAULT_CONNECTION_TIMEOUT}) {
     List<int> buffer = [];
     StreamController<SmartLockState> streamController = new StreamController();
     BluetoothDevice device = BluetoothDevice(id:DeviceIdentifier(lock.bluetoothId), type: BluetoothDeviceType.le);
@@ -288,29 +284,26 @@ class SmartLockConnection {
           //print('event msg: ${hex.encode(values)}');
 
           if(values.length < MAX_PACKET_LENGTH) {
-            // print response to console for debugging
-            debugPrint('Encrypted response: ${hex.encode(buffer.toList())}');
+           
             List<int> msg = _decrypt(buffer, hex.decode(lock.authorization.ssk));
-            // print response to console for debugging
-            debugPrint('Decrypted response: ${hex.encode(msg.toList())}');
 
             //clear buffer to receive next response
             buffer.clear();
 
             if(_isCrcOk(msg)) { // check crc
-              if(lock.authorization.authId == hex.encode(msg.sublist(0,4))) { // check authorization id
+              if(lock.authorization.id == hex.encode(msg.sublist(0,4))) { // check authorization id
                 int command = msg[4]; // get command in the response 
                 
                 switch(command) {
                   case CHALLENGE_CMD: 
                     //create lock action request with the received challenge
-                    List<int> payload = _createLockActionRequest(lock.authorization.authId,
+                    List<int> payload = _createLockActionRequest(lock.authorization.id,
                     lock.authorization.ssk,action,msg.sublist(6,msg.length-2));
                     //write payload
                     device.writeCharacteristic(xter, payload,type: CharacteristicWriteType.withResponse);
                     break;
                   case KEYTURNER_STATE_CMD: 
-                    streamController.add(SmartLockState.fromDeviceResponse(msg));
+                    streamController.add(SmartLockState.fromBytes(msg));
                     break;
                   case STATUS_CMD:
                     int status = msg[6]; // get the status 
@@ -343,7 +336,7 @@ class SmartLockConnection {
         });
       
         // create challenge request payload
-        List<int> payload = _createChallengeRequest(lock.authorization.authId, lock.authorization.ssk);
+        List<int> payload = _createChallengeRequest(lock.authorization.id, lock.authorization.ssk);
         //write payload
         device.writeCharacteristic(xter, payload,type: CharacteristicWriteType.withResponse);
 
@@ -357,10 +350,11 @@ class SmartLockConnection {
     return streamController.stream;
   }
 
-  /// Create [Authorization] 
-  /// 
-  Stream<Authorization> createAuthorization(SmartLock lock, int pin, IdType idType, String authName, 
-  DateTime startDate, DateTime endDate, DateTime startTime, DateTime endTime, {Duration timeout=DEFAULT_CONNECTION_TIMEOUT}) {
+  /// Create an [Authorization] using an existing [SmartLockKey]
+  /// The [Stream] closes if the request is not completed after [timeout].
+  Stream<Authorization> createAuthorization(SmartLockKey lock, int pin, IdType idType, String name, 
+  DateTime allowedFromDate, DateTime allowedUntilDate, DateTime allowedFromTime, DateTime allowedUntilTime, 
+  {Duration timeout=DEFAULT_CONNECTION_TIMEOUT}) {
     List<int> buffer = [];
     StreamController<Authorization> streamController = new StreamController();
     BluetoothDevice device = BluetoothDevice(id:DeviceIdentifier(lock.bluetoothId), type: BluetoothDeviceType.le);
@@ -387,32 +381,31 @@ class SmartLockConnection {
         indListener = device.onValueChanged(xter).listen((values) async{
           buffer.addAll(values);
           if(values.length < MAX_PACKET_LENGTH) {
-            // print response to console for debugging
-            debugPrint('Encrypted response: ${hex.encode(buffer.toList())}');
+      
             List<int> msg = _decrypt(buffer, hex.decode(lock.authorization.ssk));
-            // print response to console for debugging
-            debugPrint('Decrypted response: ${hex.encode(msg.toList())}');
+           
 
             //clear buffer to receive next response
             buffer.clear();
 
             if(_isCrcOk(msg)) { // check crc
-              if(lock.authorization.authId == hex.encode(msg.sublist(0,4))) { // check authorization id
+              if(lock.authorization.id == hex.encode(msg.sublist(0,4))) { // check authorization id
                 int command = msg[4]; // get command in the response 
                 
                 switch(command) {
                   case CHALLENGE_CMD: 
                     // create authorization request with the received challenge
-                    List<int> payload = _createAuthorizationRequest(lock.authorization.authId, 
-                    lock.authorization.ssk, pin, idType, authName, authSsk, startDate, endDate, 
-                    startTime, endTime, xter, msg.sublist(6,msg.length-2));
+                    List<int> payload = _createAuthorizationRequest(lock.authorization.id, 
+                    lock.authorization.ssk, pin, idType, name, authSsk, allowedFromDate, allowedUntilDate, 
+                    allowedFromTime, allowedUntilTime, xter, msg.sublist(6,msg.length-2));
                     //write payload
                     device.writeCharacteristic(xter, payload,type: CharacteristicWriteType.withResponse);
                     break;
                   case AUTHORIZATION_ID_INVITE_CMD:
                     //send created authorization to listeners as a smart lock object
-                    streamController.add(Authorization(hex.encode(msg.sublist(6,10)), 
-                      hex.encode(authSsk),authName:authName));
+                    streamController.add(Authorization(hex.encode(msg.sublist(6,10)), hex.encode(authSsk),
+                    name:name, idType:idType,allowedFromDate: allowedFromDate,allowedUntilDate:allowedUntilDate, 
+                    allowedFromTime:allowedFromTime,allowedUntilTime:allowedUntilTime));
                     // clean up
                     disconnect();
                     break;
@@ -442,7 +435,7 @@ class SmartLockConnection {
         });
       
         // create request payload
-        List<int> payload = _createChallengeRequest(lock.authorization.authId, lock.authorization.ssk);
+        List<int> payload = _createChallengeRequest(lock.authorization.id, lock.authorization.ssk);
         //write payload
         device.writeCharacteristic(xter, payload,type: CharacteristicWriteType.withResponse);
       } else if (s == BluetoothDeviceState.disconnected){
@@ -455,10 +448,12 @@ class SmartLockConnection {
     return streamController.stream;
   }
 
-  /// Creates [SmartLock] from [device]
-  Stream<SmartLock> createSmartLock(BluetoothDevice device, IdType typeId, int appId, String authName) {
+  /// Authorize app
+  /// 
+  /// Creates a [SmartLockKey] from the [device] returned by [findSmartLockDevices] method
+  Stream<SmartLockKey> authorizeApp(BluetoothDevice device, IdType typeId, int appId, String authName) {
     
-    StreamController<SmartLock> streamController = new StreamController();
+    StreamController<SmartLockKey> streamController = new StreamController();
     StreamSubscription deviceCon; 
     StreamSubscription indListener;
 
@@ -498,9 +493,7 @@ class SmartLockConnection {
             int command = response[0]; // get command in the response
             switch(command) {
               case PUBLIC_KEY_CMD:
-                // print response for debugging
-                debugPrint('Public key request response: ${hex.encode(response.toList())}');
-
+                
                 smartLockPublicKey = response.sublist(2,response.length-2);
                 // calculate DH Key
                 Uint8List dhk = Uint8List(32);
@@ -510,7 +503,6 @@ class SmartLockConnection {
                 Uint8List _sigma = Uint8List.fromList([101, 120, 112, 97, 110, 100, 32, 51, 50, 45, 98, 121, 116, 101, 32, 107]);
                 Uint8List _zero = Uint8List.fromList([0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]);
                 if(0 != TweetNaclFast.crypto_core_hsalsa20(ssk, _zero, dhk, _sigma)){
-                  debugPrint('failed to generate shared key');
                   streamController.addError(RequestError.API_FAILED_TO_CALC_SSK);
                   disconnect();
                 }
@@ -523,8 +515,6 @@ class SmartLockConnection {
                 
                 challengeCmdCnt++;
                 if(challengeCmdCnt == 1) {
-                  // print response for debugging
-                  debugPrint('Challenge 1 Response: ${hex.encode(response.toList())}');
                   // HMAC-SHA256
                   hasher = new Hmac(sha256, ssk.toList()); 
                   // create request payload
@@ -533,8 +523,6 @@ class SmartLockConnection {
                   //write payload
                   device.writeCharacteristic(xter, payload,type: CharacteristicWriteType.withResponse);
                 } else if(challengeCmdCnt == 2) {
-                  // print response for debugging
-                  debugPrint('Challenge 2 Response: ${hex.encode(response.toList())}');
                   // create request payload
                   List<int> payload = _createAuthorizationDataRequest(hasher, typeId, appId, authName, 
                     response.sublist(2,response.length-2));
@@ -543,21 +531,17 @@ class SmartLockConnection {
                 }
                 break;
               case AUTHORIZATION_ID_CMD:
-                // print response for debugging
-                debugPrint('Authorization ID Response: ${hex.encode(response.toList())}');
                 //hash = Uint8List.fromList(response.sublist(2,34)); 
-                //todo: need to authenticate response using above hash
+                //TODO: need to authenticate response using above hash
                 authId = Uint8List.fromList(response.sublist(34,38));
                 //uuid = Uint8List.fromList(response.sublist(38,54));
-                //print('uuid: ${BigInt.parse(hex.encode(response.sublist(38,54)),radix:16)}');
-                //print('uuid: ${utf8.encode(hex.encode(response.sublist(38,54)))}');
                 
                 //send authorised lock to listeners
                 streamController.add(
-                  SmartLock(
+                  SmartLockKey(
                     device.id.id, 
                     Authorization(hex.encode(authId.toList()), 
-                    hex.encode(ssk.toList()),authName:authName)
+                    hex.encode(ssk.toList()),name:authName)
                   )
                 );
 
@@ -568,8 +552,6 @@ class SmartLockConnection {
                 device.writeCharacteristic(xter, payload,type: CharacteristicWriteType.withResponse);
                 break;
               case STATUS_CMD:
-                // print response for debugging
-                debugPrint('Status complete Response: ${hex.encode(response.toList())}');
                 int status = response[2]; // get the status 
                 if(status == ACCEPTED_STATUS) 
                   debugPrint('Warning: Pairing requested accepted but status complete not received from smart lock');
@@ -578,13 +560,10 @@ class SmartLockConnection {
                 disconnect();
                 break;
               case ERROR_REPORT_CMD: 
-                debugPrint('Error report: ${hex.encode(response.toList())}');
-                // sample error 1200 10 0100 8721
                 streamController.addError(_requestErrors[response[2]]);
                 disconnect();
                 break;
               default: 
-                debugPrint('Unknown error: ${hex.encode(response.toList())}');
                 streamController.addError(RequestError.API_UNKNOWN_ERROR);
                 disconnect();
               
@@ -602,10 +581,10 @@ class SmartLockConnection {
     return streamController.stream;
   }
 
-  /// Get [LockConfig] of [lock]
-  Stream<LockConfig> getLockConfig(SmartLock lock, {Duration timeout=DEFAULT_CONNECTION_TIMEOUT}) {
+  /// Get [Config] of [lock]
+  Stream<Config> getLockConfig(SmartLockKey lock, {Duration timeout=DEFAULT_CONNECTION_TIMEOUT}) {
     List<int> buffer = [];
-    StreamController<LockConfig> streamController = new StreamController();
+    StreamController<Config> streamController = new StreamController();
     BluetoothDevice device = BluetoothDevice(id:DeviceIdentifier(lock.bluetoothId), type: BluetoothDeviceType.le);
     StreamSubscription deviceCon; 
     StreamSubscription indListener;
@@ -627,30 +606,27 @@ class SmartLockConnection {
         indListener = device.onValueChanged(xter).listen((values) async{
           buffer.addAll(values);
           if(values.length < MAX_PACKET_LENGTH) {
-            // print response to console for debugging
-            debugPrint('Encrypted response: ${hex.encode(buffer.toList())}');
+           
             List<int> msg = _decrypt(buffer, hex.decode(lock.authorization.ssk));
-            // print response to console for debugging
-            debugPrint('Decrypted response: ${hex.encode(msg.toList())}');
 
             //clear buffer to receive next response
             buffer.clear();
 
             if(_isCrcOk(msg)) { // check crc
-              if(lock.authorization.authId == hex.encode(msg.sublist(0,4))) { // check authorization id
+              if(lock.authorization.id == hex.encode(msg.sublist(0,4))) { // check authorization id
                 int command = msg[4]; // get command in the response 
                 
                 switch(command) {
                   case CHALLENGE_CMD: 
                     // request config with the received challenge
-                    List<int> payload = _createConfigRequest(lock.authorization.authId,lock.authorization.ssk, 
+                    List<int> payload = _createConfigRequest(lock.authorization.id,lock.authorization.ssk, 
                       msg.sublist(6,msg.length-2));
                     //write payload
                     device.writeCharacteristic(xter, payload,type: CharacteristicWriteType.withResponse);
                     break;
                   case CONFIG_CMD:
                     //send created config to listeners as a smart lock object
-                    streamController.add(LockConfig.fromDeviceResponse(msg));
+                    streamController.add(Config.fromBytes(msg));
                     // clean up
                     disconnect();
                     break;
@@ -680,7 +656,7 @@ class SmartLockConnection {
         });
       
         // create request payload
-        List<int> payload = _createChallengeRequest(lock.authorization.authId, lock.authorization.ssk);
+        List<int> payload = _createChallengeRequest(lock.authorization.id, lock.authorization.ssk);
         //write payload
         device.writeCharacteristic(xter, payload,type: CharacteristicWriteType.withResponse);
       } else if (s == BluetoothDeviceState.disconnected){
@@ -694,8 +670,9 @@ class SmartLockConnection {
   }
 
   /// Change the security pain of [lock] from [oldPin] to [newPin]
-  Stream<bool> setSecurityPin(SmartLock lock, int oldPin, int newPin,{Duration timeout=DEFAULT_CONNECTION_TIMEOUT}) {
-    //todo: check whether pin is within 16 bit integer range
+  /// 
+  //TODO: check whether pin is within 16 bit integer range
+  Stream<bool> setSecurityPin(SmartLockKey lock, int oldPin, int newPin,{Duration timeout=DEFAULT_CONNECTION_TIMEOUT}) {
     
     List<int> buffer = [];
     StreamController<bool> streamController = new StreamController();
@@ -720,23 +697,20 @@ class SmartLockConnection {
         indListener = device.onValueChanged(xter).listen((values) async{
           buffer.addAll(values);
           if(values.length < MAX_PACKET_LENGTH) {
-            // print response to console for debugging
-            debugPrint('Encrypted response: ${hex.encode(buffer.toList())}');
+            
             List<int> msg = _decrypt(buffer, hex.decode(lock.authorization.ssk));
-            // print response to console for debugging
-            debugPrint('Decrypted response: ${hex.encode(msg.toList())}');
-
+           
             //clear buffer to receive next response
             buffer.clear();
 
             if(_isCrcOk(msg)) { // check crc
-              if(lock.authorization.authId == hex.encode(msg.sublist(0,4))) { // check authorization id
+              if(lock.authorization.id == hex.encode(msg.sublist(0,4))) { // check authorization id
                 int command = msg[4]; // get command in the response 
                 
                 switch(command) {
                   case CHALLENGE_CMD: 
                     // request config with the received challenge
-                    List<int> payload = _createSetPinRequest(lock.authorization.authId,lock.authorization.ssk, 
+                    List<int> payload = _createSetPinRequest(lock.authorization.id,lock.authorization.ssk, 
                     oldPin, newPin, msg.sublist(6,msg.length-2));
                     //write payload
                     device.writeCharacteristic(xter, payload,type: CharacteristicWriteType.withResponse);
@@ -777,7 +751,7 @@ class SmartLockConnection {
         });
       
         // create request payload
-        List<int> payload = _createChallengeRequest(lock.authorization.authId, lock.authorization.ssk);
+        List<int> payload = _createChallengeRequest(lock.authorization.id, lock.authorization.ssk);
         //write payload
         device.writeCharacteristic(xter, payload,type: CharacteristicWriteType.withResponse);
       } else if (s == BluetoothDeviceState.disconnected){
@@ -1042,7 +1016,12 @@ class SmartLockConnection {
     Uint8List encryptedMsg = Uint8List.fromList(response.sublist(30,response.length));
     
     SecretBox box = SecretBox(Uint8List.fromList(key));
-    return box.open_nonce(encryptedMsg,nonce).toList();
+    Uint8List decryptedMsg = box.open_nonce(encryptedMsg,nonce);
+
+    //debugPrint('Encrypted response: ${hex.encode(response)}');
+    //debugPrint('Decrypted response: ${hex.encode(decryptedMsg.toList())}');
+    
+    return decryptedMsg.toList();
   }
   
   List<int> _encrypt(List<int> plainMsg, List<int> nonce, List<int> key) {
