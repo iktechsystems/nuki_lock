@@ -59,7 +59,7 @@ const int ACCEPTED_STATUS = 0x01;
 const int COMPLETED_STATUS = 0x00;
 
 // Default connection timeout
-const Duration DEFAULT_CONNECTION_TIMEOUT = Duration(seconds: 20);
+const Duration DEFAULT_CONNECTION_TIMEOUT = Duration(seconds: 30);
 
 class SmartLockConnection {
 
