@@ -667,6 +667,7 @@ class SmartLockConnection {
         //write payload
         device.writeCharacteristic(xter, payload,type: CharacteristicWriteType.withResponse);
       } else if (s == BluetoothDeviceState.disconnected){
+        debugPrint('disconnect in get lock state');
         // send error if the connection is closed before the request completes
         //if(streamController != null) {
         //  streamController.addError(RequestError.API_CONNECTION_CLOSED);
