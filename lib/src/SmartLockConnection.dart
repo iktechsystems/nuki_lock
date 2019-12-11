@@ -245,10 +245,10 @@ class SmartLockConnection {
       } else if (s == BluetoothDeviceState.disconnected){
         // send error if the connection is closed before the request completes
         debugPrint('disconnect in get lock state');
-        if(streamController != null) {
-          streamController.addError(RequestError.API_CONNECTION_CLOSED);
-          disconnect();
-        }
+        //if(streamController != null) {
+        //  streamController.addError(RequestError.API_CONNECTION_CLOSED);
+        //  disconnect();
+        //}
         
       }
     });
