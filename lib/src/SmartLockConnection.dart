@@ -172,10 +172,10 @@ class SmartLockConnection {
       
     },
     onDone: (){
-      scanSubscription?.cancel();
-      scanSubscription = null;
       streamController?.close();
       streamController = null;
+      scanSubscription?.cancel();
+      scanSubscription = null;
     });
 
     return streamController.stream;
@@ -194,12 +194,12 @@ class SmartLockConnection {
     StreamSubscription indListener;
 
     void disconnect() {
+      streamController.close();
+      streamController = null;
       indListener?.cancel();
       indListener = null;
       deviceCon?.cancel();
       deviceCon = null;
-      streamController.close();
-      streamController = null;
     }
     
     deviceCon = _flutterBlue.connect(device, autoConnect: false, timeout: timeout).listen((s) async {
@@ -245,8 +245,11 @@ class SmartLockConnection {
       } else if (s == BluetoothDeviceState.disconnected){
         // send error if the connection is closed before the request completes
         debugPrint('disconnect in get lock state');
-        //streamController.addError(RequestError.API_CONNECTION_CLOSED);
-        //disconnect();
+        if(streamController != null) {
+          streamController.addError(RequestError.API_CONNECTION_CLOSED);
+          disconnect();
+        }
+        
       }
     });
 
@@ -265,12 +268,12 @@ class SmartLockConnection {
     StreamSubscription indListener;
     
     void disconnect() {
+      streamController.close();
+      streamController = null;
       indListener?.cancel();
       indListener = null;
       deviceCon?.cancel();
       deviceCon = null;
-      streamController.close();
-      streamController = null;
     }
     
     deviceCon = _flutterBlue.connect(device, autoConnect: false, timeout: timeout).listen((s) async {
@@ -282,7 +285,6 @@ class SmartLockConnection {
         indListener = device.onValueChanged(xter).listen((values) async{
 
           buffer.addAll(values);
-          //print('event msg: ${hex.encode(values)}');
 
           if(values.length < MAX_PACKET_LENGTH) {
            
@@ -343,8 +345,10 @@ class SmartLockConnection {
 
       }  else if (s == BluetoothDeviceState.disconnected){
         // send error if the connection is closed before the request completes
-        streamController.addError(RequestError.API_CONNECTION_CLOSED);
-        disconnect();
+        if(streamController != null) {
+          streamController.addError(RequestError.API_CONNECTION_CLOSED);
+          disconnect();
+        }
       }
     });
 
@@ -363,12 +367,12 @@ class SmartLockConnection {
     StreamSubscription indListener;
     
     void disconnect() {
+      streamController.close();
+      streamController = null;
       indListener?.cancel();
       indListener = null;
       deviceCon?.cancel();
       deviceCon = null;
-      streamController.close();
-      streamController = null;
     }
 
     deviceCon = _flutterBlue.connect(device, autoConnect: false, timeout: timeout).listen((s) async {
@@ -441,8 +445,10 @@ class SmartLockConnection {
         device.writeCharacteristic(xter, payload,type: CharacteristicWriteType.withResponse);
       } else if (s == BluetoothDeviceState.disconnected){
         // send error if the connection is closed before the request completes
-        streamController.addError(RequestError.API_CONNECTION_CLOSED);
-        disconnect();
+        if(streamController != null) {
+          streamController.addError(RequestError.API_CONNECTION_CLOSED);
+          disconnect();
+        }
       }
     });
 
@@ -459,12 +465,12 @@ class SmartLockConnection {
     StreamSubscription indListener;
 
     void disconnect() {
+      streamController.close();
+      streamController = null;
       indListener?.cancel();
       indListener = null;
       deviceCon?.cancel();
       deviceCon = null;
-      streamController.close();
-      streamController = null;
     }
   
     deviceCon = _flutterBlue.connect(device,autoConnect:false).listen((s) async{
@@ -591,12 +597,12 @@ class SmartLockConnection {
     StreamSubscription indListener;
     
     void disconnect() {
+      streamController.close();
+      streamController = null;
       indListener?.cancel();
       indListener = null;
       deviceCon?.cancel();
       deviceCon = null;
-      streamController.close();
-      streamController = null;
     }
 
     deviceCon = _flutterBlue.connect(device, autoConnect: false, timeout: timeout).listen((s) async {
@@ -662,8 +668,10 @@ class SmartLockConnection {
         device.writeCharacteristic(xter, payload,type: CharacteristicWriteType.withResponse);
       } else if (s == BluetoothDeviceState.disconnected){
         // send error if the connection is closed before the request completes
-        streamController.addError(RequestError.API_CONNECTION_CLOSED);
-        disconnect();
+        if(streamController != null) {
+          streamController.addError(RequestError.API_CONNECTION_CLOSED);
+          disconnect();
+        }
       }
     });
 
@@ -682,12 +690,12 @@ class SmartLockConnection {
     StreamSubscription indListener;
     
     void disconnect() {
+      streamController.close();
+      streamController = null;
       indListener?.cancel();
       indListener = null;
       deviceCon?.cancel();
       deviceCon = null;
-      streamController.close();
-      streamController = null;
     }
 
     deviceCon = _flutterBlue.connect(device, autoConnect: false, timeout: timeout).listen((s) async {
@@ -757,8 +765,10 @@ class SmartLockConnection {
         device.writeCharacteristic(xter, payload,type: CharacteristicWriteType.withResponse);
       } else if (s == BluetoothDeviceState.disconnected){
         // send error if the connection is closed before the request completes
-        streamController.addError(RequestError.API_CONNECTION_CLOSED);
-        disconnect();
+        if(streamController != null) {
+          streamController.addError(RequestError.API_CONNECTION_CLOSED);
+          disconnect();
+        }
       }
     });
 
