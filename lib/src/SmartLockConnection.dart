@@ -19,6 +19,7 @@ import 'Config.dart';
 import 'RequestError.dart';
 import 'SmartLockState.dart';
 import 'SmartLockKey.dart';
+import 'Commands.dart';
 
 
 // Advertisement service UUID
@@ -36,30 +37,10 @@ const String KEYTURNER_USDIO_XTERISTIC_UUID = 'a92ee202-5501-11e4-916c-0800200c9
 /// Maximum packet length per notification
 const int MAX_PACKET_LENGTH = 20;
 
-// Nuki Bluetooth API Commands
-const int REQUEST_DATA_CMD = 0x01;  
-const int PUBLIC_KEY_CMD = 0x03;
-const int CHALLENGE_CMD = 0x04;
-const int AUTHORIZATION_AUTHENTICATOR_CMD = 0x05;
-const int AUTHORIZATION_DATA_CMD = 0x06;
-const int AUTHORIZATION_ID_CMD = 0x07;
-const int AUTHORIZATION_DATA_INVITE_CMD = 0x0B;
-const int KEYTURNER_STATE_CMD = 0x0C;
-const int LOCK_ACTION_CMD = 0x0D;
-const int STATUS_CMD = 0x0E;
-const int AUTHORIZATION_ID_CONFIRMATION_CMD = 0x1E;
-const int AUTHORIZATION_ID_INVITE_CMD = 0x1F;
-const int ERROR_REPORT_CMD = 0x12;
-const int GET_CONFIG_CMD = 0x14;
-const int CONFIG_CMD = 0x15;
-const int SET_PIN_CMD = 0x19;
-
 // Status codes
 const int ACCEPTED_STATUS = 0x01;
 const int COMPLETED_STATUS = 0x00;
 
-// Default connection timeout
-const Duration DEFAULT_CONNECTION_TIMEOUT = Duration(seconds: 30);
 
 class SmartLockConnection {
 
@@ -181,15 +162,12 @@ class SmartLockConnection {
     return streamController.stream;
   }
 
-  /// Get the current state of [lock]
-  /// 
-  /// Returns a [Stream] which sends [SmartLockState] of [lock] to listeners. The [Stream] closes
-  /// if the request is not completed after [timeout].  
-  Stream<SmartLockState> getLockState(SmartLockKey lock, {Duration timeout=DEFAULT_CONNECTION_TIMEOUT}) {
+  /// Get the current state of the lock
+  Stream<SmartLockState> getLockState(SmartLockKey slKey) {
 
     List<int> buffer = [];
     StreamController<SmartLockState> streamController = new StreamController();
-    BluetoothDevice device = BluetoothDevice(id:DeviceIdentifier(lock.bluetoothId), type: BluetoothDeviceType.le);
+    BluetoothDevice device = BluetoothDevice(id:DeviceIdentifier(slKey.bluetoothId), type: BluetoothDeviceType.le);
     StreamSubscription deviceCon; 
     StreamSubscription indListener;
 
@@ -202,7 +180,7 @@ class SmartLockConnection {
       deviceCon = null;
     }
     
-    deviceCon = _flutterBlue.connect(device, autoConnect: false, timeout: timeout).listen((s) async {
+    deviceCon = _flutterBlue.connect(device, autoConnect: false).listen((s) async {
    
       if(s == BluetoothDeviceState.connected) {
         BluetoothCharacteristic xter = await _findCharacteristics(device, KEYTURNER_SERVICE_UUID, KEYTURNER_USDIO_XTERISTIC_UUID);
@@ -212,10 +190,10 @@ class SmartLockConnection {
 
           if(values.length < MAX_PACKET_LENGTH) {
             
-            List<int> msg = _decrypt(buffer, hex.decode(lock.authorization.ssk));
+            List<int> msg = _decrypt(buffer, hex.decode(slKey.authorization.ssk));
             
             if(_isCrcOk(msg)) {
-              if(lock.authorization.id == hex.encode(msg.sublist(0,4))) {
+              if(slKey.authorization.id == hex.encode(msg.sublist(0,4))) {
                 int command = msg[4]; // get command in the response 
                 
                 switch(command) {
@@ -239,31 +217,21 @@ class SmartLockConnection {
         });
         
         // create request payload
-        List<int> payload = _createLockStateRequest(lock.authorization.id, lock.authorization.ssk);
+        List<int> payload = _createLockStateRequest(slKey.authorization.id, slKey.authorization.ssk);
         //write payload
         device.writeCharacteristic(xter, payload,type: CharacteristicWriteType.withResponse);
-      } else if (s == BluetoothDeviceState.disconnected){
-        // send error if the connection is closed before the request completes
-        debugPrint('disconnect in get lock state');
-        //if(streamController != null) {
-        //  streamController.addError(RequestError.API_CONNECTION_CLOSED);
-        //  disconnect();
-        //}
-        
-      }
+      } 
     });
 
     return streamController.stream;
   }
 
-  /// Performs the requested [action] on [lock] 
+  /// Performs the requested action on the lock
   /// 
-  /// Returns a [Stream] which sends [SmartLockState] of [lock] to listeners. The [Stream] closes
-  /// if the request is not completed after [timeout].
-  Stream<SmartLockState> requestLockAction(SmartLockKey lock, LockAction action, {Duration timeout=DEFAULT_CONNECTION_TIMEOUT}) {
+  Stream<SmartLockState> requestLockAction(SmartLockKey slKey, LockAction action) {
     List<int> buffer = [];
     StreamController<SmartLockState> streamController = new StreamController();
-    BluetoothDevice device = BluetoothDevice(id:DeviceIdentifier(lock.bluetoothId), type: BluetoothDeviceType.le);
+    BluetoothDevice device = BluetoothDevice(id:DeviceIdentifier(slKey.bluetoothId), type: BluetoothDeviceType.le);
     StreamSubscription deviceCon; 
     StreamSubscription indListener;
     
@@ -276,7 +244,7 @@ class SmartLockConnection {
       deviceCon = null;
     }
     
-    deviceCon = _flutterBlue.connect(device, autoConnect: false, timeout: timeout).listen((s) async {
+    deviceCon = _flutterBlue.connect(device, autoConnect: false).listen((s) async {
       if(s == BluetoothDeviceState.connected) {
         BluetoothCharacteristic xter = await _findCharacteristics(device, KEYTURNER_SERVICE_UUID, KEYTURNER_USDIO_XTERISTIC_UUID);
         
@@ -288,20 +256,20 @@ class SmartLockConnection {
 
           if(values.length < MAX_PACKET_LENGTH) {
            
-            List<int> msg = _decrypt(buffer, hex.decode(lock.authorization.ssk));
+            List<int> msg = _decrypt(buffer, hex.decode(slKey.authorization.ssk));
 
             //clear buffer to receive next response
             buffer.clear();
 
             if(_isCrcOk(msg)) { // check crc
-              if(lock.authorization.id == hex.encode(msg.sublist(0,4))) { // check authorization id
+              if(slKey.authorization.id == hex.encode(msg.sublist(0,4))) { // check authorization id
                 int command = msg[4]; // get command in the response 
                 
                 switch(command) {
                   case CHALLENGE_CMD: 
-                    //create lock action request with the received challenge
-                    List<int> payload = _createLockActionRequest(lock.authorization.id,
-                    lock.authorization.ssk,action,msg.sublist(6,msg.length-2));
+                    //create action request with the received challenge
+                    List<int> payload = _createLockActionRequest(slKey.authorization.id,
+                    slKey.authorization.ssk,action,msg.sublist(6,msg.length-2));
                     //write payload
                     device.writeCharacteristic(xter, payload,type: CharacteristicWriteType.withResponse);
                     break;
@@ -339,30 +307,22 @@ class SmartLockConnection {
         });
       
         // create challenge request payload
-        List<int> payload = _createChallengeRequest(lock.authorization.id, lock.authorization.ssk);
+        List<int> payload = _createChallengeRequest(slKey.authorization.id, slKey.authorization.ssk);
         //write payload
         device.writeCharacteristic(xter, payload,type: CharacteristicWriteType.withResponse);
 
-      }  else if (s == BluetoothDeviceState.disconnected){
-        // send error if the connection is closed before the request completes
-        if(streamController != null) {
-          streamController.addError(RequestError.API_CONNECTION_CLOSED);
-          disconnect();
-        }
-      }
+      } 
     });
 
     return streamController.stream;
   }
 
-  /// Create an [Authorization] using an existing [SmartLockKey]
-  /// The [Stream] closes if the request is not completed after [timeout].
-  Stream<Authorization> createAuthorization(SmartLockKey lock, int pin, IdType idType, String name, 
-  DateTime allowedFromDate, DateTime allowedUntilDate, DateTime allowedFromTime, DateTime allowedUntilTime, 
-  {Duration timeout=DEFAULT_CONNECTION_TIMEOUT}) {
+  /// Create an Authorization
+  Stream<Authorization> createAuthorization(SmartLockKey slKey, int pin, IdType idType, String name, 
+  DateTime allowedFromDate, DateTime allowedUntilDate, DateTime allowedFromTime, DateTime allowedUntilTime) {
     List<int> buffer = [];
     StreamController<Authorization> streamController = new StreamController();
-    BluetoothDevice device = BluetoothDevice(id:DeviceIdentifier(lock.bluetoothId), type: BluetoothDeviceType.le);
+    BluetoothDevice device = BluetoothDevice(id:DeviceIdentifier(slKey.bluetoothId), type: BluetoothDeviceType.le);
     StreamSubscription deviceCon; 
     StreamSubscription indListener;
     
@@ -375,7 +335,7 @@ class SmartLockConnection {
       deviceCon = null;
     }
 
-    deviceCon = _flutterBlue.connect(device, autoConnect: false, timeout: timeout).listen((s) async {
+    deviceCon = _flutterBlue.connect(device, autoConnect: false).listen((s) async {
       if(s == BluetoothDeviceState.connected) {
         BluetoothCharacteristic xter = await _findCharacteristics(device, KEYTURNER_SERVICE_UUID, 
           KEYTURNER_USDIO_XTERISTIC_UUID);
@@ -387,27 +347,27 @@ class SmartLockConnection {
           buffer.addAll(values);
           if(values.length < MAX_PACKET_LENGTH) {
       
-            List<int> msg = _decrypt(buffer, hex.decode(lock.authorization.ssk));
+            List<int> msg = _decrypt(buffer, hex.decode(slKey.authorization.ssk));
            
 
             //clear buffer to receive next response
             buffer.clear();
 
             if(_isCrcOk(msg)) { // check crc
-              if(lock.authorization.id == hex.encode(msg.sublist(0,4))) { // check authorization id
+              if(slKey.authorization.id == hex.encode(msg.sublist(0,4))) { // check authorization id
                 int command = msg[4]; // get command in the response 
                 
                 switch(command) {
                   case CHALLENGE_CMD: 
                     // create authorization request with the received challenge
-                    List<int> payload = _createAuthorizationRequest(lock.authorization.id, 
-                    lock.authorization.ssk, pin, idType, name, authSsk, allowedFromDate, allowedUntilDate, 
+                    List<int> payload = _createAuthorizationRequest(slKey.authorization.id, 
+                    slKey.authorization.ssk, pin, idType, name, authSsk, allowedFromDate, allowedUntilDate, 
                     allowedFromTime, allowedUntilTime, xter, msg.sublist(6,msg.length-2));
                     //write payload
                     device.writeCharacteristic(xter, payload,type: CharacteristicWriteType.withResponse);
                     break;
                   case AUTHORIZATION_ID_INVITE_CMD:
-                    //send created authorization to listeners as a smart lock object
+                    //send created authorization to listeners as a smart slKey object
                     streamController.add(Authorization(hex.encode(msg.sublist(6,10)), hex.encode(authSsk),
                     name:name, idType:idType,allowedFromDate: allowedFromDate,allowedUntilDate:allowedUntilDate, 
                     allowedFromTime:allowedFromTime,allowedUntilTime:allowedUntilTime));
@@ -440,16 +400,10 @@ class SmartLockConnection {
         });
       
         // create request payload
-        List<int> payload = _createChallengeRequest(lock.authorization.id, lock.authorization.ssk);
+        List<int> payload = _createChallengeRequest(slKey.authorization.id, slKey.authorization.ssk);
         //write payload
         device.writeCharacteristic(xter, payload,type: CharacteristicWriteType.withResponse);
-      } else if (s == BluetoothDeviceState.disconnected){
-        // send error if the connection is closed before the request completes
-        if(streamController != null) {
-          streamController.addError(RequestError.API_CONNECTION_CLOSED);
-          disconnect();
-        }
-      }
+      } 
     });
 
     return streamController.stream;
@@ -457,7 +411,6 @@ class SmartLockConnection {
 
   /// Authorize app
   /// 
-  /// Creates a [SmartLockKey] from the [device] returned by [findSmartLockDevices] method
   Stream<SmartLockKey> authorizeApp(BluetoothDevice device, IdType typeId, int appId, String authName) {
     
     StreamController<SmartLockKey> streamController = new StreamController();
@@ -543,7 +496,7 @@ class SmartLockConnection {
                 authId = Uint8List.fromList(response.sublist(34,38));
                 //uuid = Uint8List.fromList(response.sublist(38,54));
                 
-                //send authorised lock to listeners
+                //send authorised slKey to listeners
                 streamController.add(
                   SmartLockKey(
                     device.id.id, 
@@ -582,17 +535,24 @@ class SmartLockConnection {
         List<int> payload = _createPublicKeyRequest();
         //write payload
         device.writeCharacteristic(xter, payload,type: CharacteristicWriteType.withResponse);
-      } 
+      } else if (s == BluetoothDeviceState.disconnected){
+        debugPrint('disconnect in auth app');
+        // send error if the connection is closed before the request completes
+        //if(streamController != null) {
+        //  streamController.addError(RequestError.API_CONNECTION_CLOSED);
+        //  disconnect();
+        //}
+      }
     });
 
     return streamController.stream;
   }
 
-  /// Get [Config] of [lock]
-  Stream<Config> getLockConfig(SmartLockKey lock, {Duration timeout=DEFAULT_CONNECTION_TIMEOUT}) {
+  /// Get Config of lock
+  Stream<Config> getLockConfig(SmartLockKey slKey) {
     List<int> buffer = [];
     StreamController<Config> streamController = new StreamController();
-    BluetoothDevice device = BluetoothDevice(id:DeviceIdentifier(lock.bluetoothId), type: BluetoothDeviceType.le);
+    BluetoothDevice device = BluetoothDevice(id:DeviceIdentifier(slKey.bluetoothId), type: BluetoothDeviceType.le);
     StreamSubscription deviceCon; 
     StreamSubscription indListener;
     
@@ -604,8 +564,8 @@ class SmartLockConnection {
       deviceCon?.cancel();
       deviceCon = null;
     }
-
-    deviceCon = _flutterBlue.connect(device, autoConnect: false, timeout: timeout).listen((s) async {
+    
+    deviceCon = _flutterBlue.connect(device, autoConnect: false).listen((s) async {
       if(s == BluetoothDeviceState.connected) {
         BluetoothCharacteristic xter = await _findCharacteristics(device, KEYTURNER_SERVICE_UUID, KEYTURNER_USDIO_XTERISTIC_UUID);
         await device.setNotifyValue(xter, true);
@@ -614,19 +574,19 @@ class SmartLockConnection {
           buffer.addAll(values);
           if(values.length < MAX_PACKET_LENGTH) {
            
-            List<int> msg = _decrypt(buffer, hex.decode(lock.authorization.ssk));
+            List<int> msg = _decrypt(buffer, hex.decode(slKey.authorization.ssk));
 
             //clear buffer to receive next response
             buffer.clear();
 
             if(_isCrcOk(msg)) { // check crc
-              if(lock.authorization.id == hex.encode(msg.sublist(0,4))) { // check authorization id
+              if(slKey.authorization.id == hex.encode(msg.sublist(0,4))) { // check authorization id
                 int command = msg[4]; // get command in the response 
                 
                 switch(command) {
                   case CHALLENGE_CMD: 
                     // request config with the received challenge
-                    List<int> payload = _createConfigRequest(lock.authorization.id,lock.authorization.ssk, 
+                    List<int> payload = _createConfigRequest(slKey.authorization.id,slKey.authorization.ssk, 
                       msg.sublist(6,msg.length-2));
                     //write payload
                     device.writeCharacteristic(xter, payload,type: CharacteristicWriteType.withResponse);
@@ -663,30 +623,23 @@ class SmartLockConnection {
         });
       
         // create request payload
-        List<int> payload = _createChallengeRequest(lock.authorization.id, lock.authorization.ssk);
+        List<int> payload = _createChallengeRequest(slKey.authorization.id, slKey.authorization.ssk);
         //write payload
         device.writeCharacteristic(xter, payload,type: CharacteristicWriteType.withResponse);
-      } else if (s == BluetoothDeviceState.disconnected){
-        debugPrint('disconnect in get lock state');
-        // send error if the connection is closed before the request completes
-        //if(streamController != null) {
-        //  streamController.addError(RequestError.API_CONNECTION_CLOSED);
-        //  disconnect();
-        //}
       }
     });
 
     return streamController.stream;
   }
 
-  /// Change the security pain of [lock] from [oldPin] to [newPin]
+  /// Change the security pin of lock
   /// 
   //TODO: check whether pin is within 16 bit integer range
-  Stream<bool> setSecurityPin(SmartLockKey lock, int oldPin, int newPin,{Duration timeout=DEFAULT_CONNECTION_TIMEOUT}) {
+  Stream<bool> setSecurityPin(SmartLockKey slKey, int oldPin, int newPin) {
     
     List<int> buffer = [];
     StreamController<bool> streamController = new StreamController();
-    BluetoothDevice device = BluetoothDevice(id:DeviceIdentifier(lock.bluetoothId), type: BluetoothDeviceType.le);
+    BluetoothDevice device = BluetoothDevice(id:DeviceIdentifier(slKey.bluetoothId), type: BluetoothDeviceType.le);
     StreamSubscription deviceCon; 
     StreamSubscription indListener;
     
@@ -699,7 +652,7 @@ class SmartLockConnection {
       deviceCon = null;
     }
 
-    deviceCon = _flutterBlue.connect(device, autoConnect: false, timeout: timeout).listen((s) async {
+    deviceCon = _flutterBlue.connect(device, autoConnect: false).listen((s) async {
       if(s == BluetoothDeviceState.connected) {
         BluetoothCharacteristic xter = await _findCharacteristics(device, KEYTURNER_SERVICE_UUID, KEYTURNER_USDIO_XTERISTIC_UUID);
         await device.setNotifyValue(xter, true);
@@ -708,19 +661,19 @@ class SmartLockConnection {
           buffer.addAll(values);
           if(values.length < MAX_PACKET_LENGTH) {
             
-            List<int> msg = _decrypt(buffer, hex.decode(lock.authorization.ssk));
+            List<int> msg = _decrypt(buffer, hex.decode(slKey.authorization.ssk));
            
             //clear buffer to receive next response
             buffer.clear();
 
             if(_isCrcOk(msg)) { // check crc
-              if(lock.authorization.id == hex.encode(msg.sublist(0,4))) { // check authorization id
+              if(slKey.authorization.id == hex.encode(msg.sublist(0,4))) { // check authorization id
                 int command = msg[4]; // get command in the response 
                 
                 switch(command) {
                   case CHALLENGE_CMD: 
                     // request config with the received challenge
-                    List<int> payload = _createSetPinRequest(lock.authorization.id,lock.authorization.ssk, 
+                    List<int> payload = _createSetPinRequest(slKey.authorization.id,slKey.authorization.ssk, 
                     oldPin, newPin, msg.sublist(6,msg.length-2));
                     //write payload
                     device.writeCharacteristic(xter, payload,type: CharacteristicWriteType.withResponse);
@@ -761,16 +714,10 @@ class SmartLockConnection {
         });
       
         // create request payload
-        List<int> payload = _createChallengeRequest(lock.authorization.id, lock.authorization.ssk);
+        List<int> payload = _createChallengeRequest(slKey.authorization.id, slKey.authorization.ssk);
         //write payload
         device.writeCharacteristic(xter, payload,type: CharacteristicWriteType.withResponse);
-      } else if (s == BluetoothDeviceState.disconnected){
-        // send error if the connection is closed before the request completes
-        if(streamController != null) {
-          streamController.addError(RequestError.API_CONNECTION_CLOSED);
-          disconnect();
-        }
-      }
+      } 
     });
 
     return streamController.stream;

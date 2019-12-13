@@ -46,7 +46,6 @@ enum RequestError {
   API_CRC_AUTHENTICATION_FAILED,
   API_AUTHID_AUTHENTICATION_FAILED,
   API_FAILED_TO_CALC_SSK, // Failed to calc secure secret key
-  API_CONNECTION_CLOSED, // connection closed before completion of request
   API_UNKNOWN_ERROR,
 
 }

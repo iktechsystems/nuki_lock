@@ -42,7 +42,7 @@ class LockDetailState extends State<LockDetail> {
         lockState = state; 
       });
     },
-    onError: (error) async{
+    onError: (error) async {
       if(error == RequestError.K_ERROR_MOTOR_LOW_VOLTAGE) {
         await AppDialogs.showAlertDialog(context,'Lock Error',
         'Weak batteries');
@@ -50,9 +50,6 @@ class LockDetailState extends State<LockDetail> {
       else if (error == RequestError.K_ERROR_TIME_NOT_ALLOWED)
         await AppDialogs.showAlertDialog(context,'Lock Error',
         'Your access period has expired');
-      else if (error == RequestError.API_CONNECTION_CLOSED)
-        await AppDialogs.showAlertDialog(context,'Lock Error',
-        'Failed to connect to lock. Ensure the lock is powered and that you are within Bluetooth range');
       else
         await AppDialogs.showAlertDialog(context,'Lock Error',
           'Request error: $error');
