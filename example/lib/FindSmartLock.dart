@@ -14,11 +14,6 @@ import 'package:nuki_lock/nuki_lock.dart';
 import 'AppDialogs.dart';
 import 'LockDetails.dart';
 
-// Name for the master authorisation
-const String AUTHORIZATION_NAME = 'Master Key';
-// ID for the application requesting authorisation
-const int APP_ID = 12345;
-
 class FindSmartLock extends StatefulWidget {
   FindSmartLock({Key key, this.title}) : super(key: key);
 
@@ -87,7 +82,7 @@ class FindSmartLockState extends State<FindSmartLock> {
 
     SmartLockKey lock;
     Config config;
-    connection.authorizeApp(device,IdType.APP,APP_ID,AUTHORIZATION_NAME).listen((SmartLockKey sl){
+    connection.authorizeApp(device,IdType.APP,12345,'MyApp').listen((SmartLockKey sl){
       progMsg.add('Successfully connected to ${device.name}');
       lock = sl;
     },onDone: (){
