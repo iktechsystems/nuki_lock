@@ -1,6 +1,6 @@
 # nuki_lock
 
-A Flutter library for controlling [Nuki Smart locks](https://nuki.io/en/smart-lock/) using bluetooth. It implements the Nuki Smart Lock [protocol](https://developer.nuki.io/c/apis/bluetooth-api/18) using a [fork](https://github.com/bpillon/flutter_blue) of the FlutterBlue bluetooth library
+A Flutter library for controlling [Nuki Smart locks](https://nuki.io/en/smart-lock/) using Bluetooth. It implements the Nuki Smart Lock Bluetooth [protocol](https://developer.nuki.io/c/apis/bluetooth-api/18) using a [fork](https://github.com/bpillon/flutter_blue) of the FlutterBlue Bluetooth library.
 
 ## Getting Started
 ### Find nearby Nuki Smart Locks
