@@ -24,11 +24,12 @@ connection.authorizeApp(devices[0],IdType.APP,12345,'MyApp').listen((SmartLockKe
 ```
 
 ### Lock a Smart Lock
+Requests to the Smart Lock are made using the SmartLockKey object returned by the authorize app function
 ```
 connection.requestLockAction(slKey, LockAction.LOCK).listen((SmartLockState state){
 
 })
 ```
 
-See the example app in the example directory for a detailed example of how to use the library
+See the example app in the example directory for a detailed example on how to use the library
 
