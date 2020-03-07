@@ -1,12 +1,15 @@
 
+// Copyright 2020, Ikechukwu Ukaegbu.  Please see the AUTHORS file
+// for details. All rights reserved. Use of this source code is governed by a
+// MIT license that can be found in the LICENSE file.
+
 enum IdType {APP, BRIDGE, FOB, KEYPAD}
 
 //TODO: Complete the list of Authorization properties
 class Authorization {
-  /// [id] is stored as hex string for convenience
-  final String id; 
-  // Shared secret key
-  final String ssk; 
+ 
+  final String id;  // id is stored as hex string for convenience
+  final String ssk; // Shared secret key
   final String name;
   final IdType idType;
   final DateTime allowedFromDate;

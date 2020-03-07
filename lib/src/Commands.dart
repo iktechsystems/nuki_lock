@@ -1,3 +1,7 @@
+// Copyright 2020, Ikechukwu Ukaegbu.  Please see the AUTHORS file
+// for details. All rights reserved. Use of this source code is governed by a
+// MIT license that can be found in the LICENSE file.
+
 // Nuki Bluetooth API Commands
 const int REQUEST_DATA_CMD = 0x01;  
 const int PUBLIC_KEY_CMD = 0x03;

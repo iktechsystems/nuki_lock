@@ -1,4 +1,6 @@
-// This class links a Nuki lock to Agnes WS
+// Copyright 2020, Ikechukwu Ukaegbu.  Please see the AUTHORS file
+// for details. All rights reserved. Use of this source code is governed by a
+// MIT license that can be found in the LICENSE file.
 
 import 'package:flutter/material.dart';
 import 'package:nuki_lock/nuki_lock.dart';

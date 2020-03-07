@@ -1,3 +1,8 @@
+// Copyright 2020, Ikechukwu Ukaegbu.  Please see the AUTHORS file
+// for details. All rights reserved. Use of this source code is governed by a
+// MIT license that can be found in the LICENSE file.
+
+
 // This class searches for nearby Nuki locks and connect to 
 // the selected lock to create a master authorisation and 
 // retrieves the lock's information
